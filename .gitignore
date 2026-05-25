@@ -1,0 +1,15 @@
+# Environments
+nourenv/
+.venv/
+__pycache__/
+*.pyc
+
+# Massive Datasets & Models
+Chinese_eng/
+data_en_fr_parallel/
+models/
+.gradio/
+
+# Individual files over 100MB
+English_text.txt
+en_fr_codeswitch.jsonl
