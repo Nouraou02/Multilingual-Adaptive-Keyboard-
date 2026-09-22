@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 import torch
 from fastapi import FastAPI
 from peft import PeftModel
@@ -11,9 +13,10 @@ from Router_class import Router
 app = FastAPI()
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
-local_model_path = "models/Qwen/Qwen3-1.7B" # Path to the downloaded model directory
-device = torch.device("cuda:2")
-
+local_model_path = "./models/Qwen/Qwen3-1.7B" # Path to the downloaded model directory
+device = torch.device("cuda:0")
+print("Using GPU:", device)
+ 
 
 # Load model in 4-bit to save memory (important for keyboard research)
 Qwen_model = AutoModelForCausalLM.from_pretrained(
@@ -23,7 +26,8 @@ Qwen_model = AutoModelForCausalLM.from_pretrained(
     #load_in_4bit=True,
     local_files_only=True,
     trust_remote_code=True,
-).to(device)
+    device_map={"": "cuda:0"}
+)
 
 Qwen_model_router = AutoModelForCausalLM.from_pretrained(
     local_model_path, 
@@ -32,7 +36,8 @@ Qwen_model_router = AutoModelForCausalLM.from_pretrained(
     #load_in_4bit=True,
     local_files_only=True,
     trust_remote_code=True,
-).to(device)
+    device_map={"": "cuda:0"}
+)
 
 tokenizer = AutoTokenizer.from_pretrained(
     local_model_path, 
@@ -52,7 +57,7 @@ Qwen_model.load_adapter(
 )
 
 router = Router(hidden_size=2048).to(device)
-router.load_state_dict(torch.load(f="./router_best.pth"))
+router.load_state_dict(torch.load(f="./router_best.pth" , map_location=device))
 router.to(device)
 
 #Qwen_model.set_adapter("fr_adapter")  # or zh, just to initialize
@@ -61,9 +66,10 @@ router.to(device)
 # 1. Initialize your model ONCE when the server starts
 # Using the LoRA adapters and Qwen-1.7B base model you trained
 engine = MultilingualKeyboardEngine(Qwen_model, Qwen_model_router, tokenizer, router, device)
-
 class KeyboardRequest(BaseModel):
     text: str
+
+print("Using GPU:", device)
 
 @app.post("/predict")
 async def predict(request: KeyboardRequest):
